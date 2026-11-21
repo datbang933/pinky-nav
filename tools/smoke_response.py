@@ -211,7 +211,7 @@ def check_safe_zone(node, x, y, timeout=5.0):
 def main():
     ap = argparse.ArgumentParser(description='smoke -> siren + drive to safe zone', formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=__doc__)
-    ap.add_argument('--source', default='http://192.168.4.1:5000/video_feed', help='MJPEG URL, camera index, or video file')
+    ap.add_argument('--source', default='http://%s:5000/video_feed' % os.environ.get('PINKY_IP', '192.168.4.1'), help='MJPEG URL, camera index, or video file')
     ap.add_argument('--model', default=os.path.join(ROOT, 'smoke', 'models', 'rabahdev', 'best.pt'))
     ap.add_argument('--classes', default='smoke')
     ap.add_argument('--conf', type=float, default=0.4)

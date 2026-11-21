@@ -21,3 +21,4 @@ smoke/models/
 smoke/snapshots/
 smoke/*.log
 *.log
+tools/robot_ip.txt

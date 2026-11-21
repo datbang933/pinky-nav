@@ -15,6 +15,6 @@ P
 [ -s $PINKY_TOOLS/last_pose.tmp ] && mv $PINKY_TOOLS/last_pose.tmp $PINKY_TOOLS/last_pose.txt && echo "saved pose: $(cat $PINKY_TOOLS/last_pose.txt)" || rm -f $PINKY_TOOLS/last_pose.tmp
 [ -f /tmp/pinky_smoke.pid ] && { kill $(cat /tmp/pinky_smoke.pid) 2>/dev/null; rm -f /tmp/pinky_smoke.pid; }
 pkill -f "pinky_nav.py listen"; pkill -x rviz2; pkill -x ros2
-for c in sync_slam_toolb lifecycle_manag controller_serv planner_server behavior_serve bt_navigator waypoint_foll velocity_smoot smoother_serve component_conta amcl map_server; do pkill -x $c; done
-if [ "$1" = "--robot" ]; then ssh $PINKY_HOST 'kill -INT $(cat /tmp/pinky_bringup.pid) 2>/dev/null; sleep 2; pkill -x bringup; pkill -x sllidar_node; pkill -x led_server; kill $(cat /tmp/pinky_camera.pid) $(cat /tmp/pinky_led.pid) 2>/dev/null; true'; echo "robot bringup stopped"; fi
+for c in sync_slam_toolb lifecycle_manag controller_serv planner_server behavior_serve bt_navigator waypoint_foll velocity_smoot smoother_server component_conta amcl map_server; do pkill -x $c; done
+if [ "$1" = "--robot" ]; then ssh $PINKY_HOST 'kill -INT $(cat /tmp/pinky_bringup.pid) 2>/dev/null; sleep 2; pkill -x bringup; pkill -x sllidar_node; pkill -x battery_publish; pkill -x robot_state_pub; pkill -x joint_state_pub; pkill -x led_server; kill $(cat /tmp/pinky_camera.pid) $(cat /tmp/pinky_led.pid) 2>/dev/null; true'; echo "robot bringup stopped"; fi
 echo "stopped."
