@@ -1,0 +1,29 @@
+--- a/pinky_bringup/pinky_bringup/bringup.py
++++ b/pinky_bringup/pinky_bringup/bringup.py
+@@ -98,10 +98,15 @@
+         self.y = 0.0
+         self.theta = 0.0
+         self.last_time = self.get_clock().now()
++        self.last_cmd_time = self.get_clock().now()
++        self.cmd_timeout = 0.5  # s, cmd_vel watchdog
++        self.cmd_active = False
+         self.is_initialized = True
+         self.get_logger().info('Pinky Bringup with Dynamixel has been started successfully.')
+ 
+     def twist_callback(self, msg: Twist):
++        self.last_cmd_time = self.get_clock().now()
++        self.cmd_active = True
+         linear_x = msg.linear.x
+         angular_z = msg.angular.z
+ 
+@@ -126,6 +131,10 @@
+ 
+     def update_and_publish(self):
+         current_time = self.get_clock().now()
++        if self.cmd_active and (current_time - self.last_cmd_time).nanoseconds / 1e9 > self.cmd_timeout:
++            self.driver.set_double_rpm(0, 0)
++            self.cmd_active = False
++            self.get_logger().warn("cmd_vel timeout: stopping motors.")
+         dt = (current_time - self.last_time).nanoseconds / 1e9
+         if dt <= 0: return
+ 

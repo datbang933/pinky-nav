@@ -1,0 +1,6 @@
+# Upstream ROS 2 packages (clone into src/). Robot (RPi) and laptop must use compatible versions.
+repositories:
+  pinky_pro:
+    type: git
+    url: https://github.com/pinklab-art/pinky_pro.git
+    version: main
