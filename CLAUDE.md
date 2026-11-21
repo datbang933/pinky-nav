@@ -21,6 +21,12 @@
 - **외부로 나가는 작업(git push, 공개 게시)은 사용자 확인 후.** 공개 저장소다. 개인 이메일/비밀번호/토큰/키를 커밋하지 말 것.
 - 로봇 `sudo` 비밀번호는 모르고 저장하지 않는다. 필요한 작업은 사용자가 별도 터미널에서 직접 실행하도록 명령을 안내.
 
+## 연기 감지 데모 (tools/smoke_response.py)
+- 연기 감지(YOLO)는 **노트북**에서(`.venv`, CPU), 로봇은 카메라 MJPEG 서버(`:5000`)와 `pinky_led led_server` 만. 코드/로직은 `Evacuator`(순수 파이썬, `tests/` 로 검증) + ROS 연결부.
+- 경보 → LED 빨강/파랑 교대 + Nav2 `goto(safe zone)`; 도착하면 초록. `/pinky/smoke` 로 `trigger`/`reset`.
+- 모델 가중치(`smoke/models/`)는 라이선스 불명이라 **저장소에 올리지 않는다**. 실제 연기로 정확도는 미검증.
+- 로봇 쪽 카메라(pinkylib)/LED 서버 기동은 아직 실물에서 테스트 안 됨 → 첫 실행 시 `/tmp/camera_server.log`, `/tmp/led_server.log`(로봇) 확인.
+
 ## 환경 함정 (겪은 것들)
 - **시계 동기화 필수.** 로봇↔노트북 오차가 수백 ms면 AMCL/Nav2가 `extrapolation into the future`/`Transform data too old`로 실패. `pinky_up.sh` 가 0.15 s 초과 시 중단. 로봇 재부팅하면 다시 틀어짐. 시계 설정은 비밀번호 입력 **후** 시간을 가져와야 정확(`sync_time.sh` 가 그렇게 함).
 - 라이다는 base_link 기준 **yaw 180°** (뒤쪽 장착). 스캔 각도 해석 시 보정할 것. 높이 약 12.5 cm → 벽은 15 cm 이상.

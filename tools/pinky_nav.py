@@ -32,7 +32,8 @@ class PinkyNav(Node):
         self._tf = Buffer(); TransformListener(self._tf, self)
         self._goal = None
         self._ex = SingleThreadedExecutor(); self._ex.add_node(self)
-        threading.Thread(target=self._ex.spin, daemon=True).start()   # background spin -> blocking calls are safe
+        self._spin_thread = threading.Thread(target=self._ex.spin, daemon=True)   # background spin -> blocking calls are safe
+        self._spin_thread.start()
         if not self._ac.wait_for_server(15): raise RuntimeError('Nav2 navigate_to_pose not available')
 
     def pose(self):
@@ -65,6 +66,14 @@ class PinkyNav(Node):
 
     def cancel(self):
         if self._goal: self._goal.cancel_goal_async()
+
+    def close(self):
+        """stop the background executor and shut rclpy down (call once at program exit)"""
+        try:
+            self._ex.shutdown(); self._spin_thread.join(timeout=2)
+            self.destroy_node()
+        finally:
+            if rclpy.ok(): rclpy.shutdown()
 
     def listen(self, topic='/pinky/event'):
         """event loop: String 'goto:<place>' | 'goto:<x>,<y>[,<yaw>]' | 'cancel'"""

@@ -20,6 +20,11 @@ Pinky Pro(Raspberry Pi)는 **센서/모터 드라이버만** 실행하고, SLAM�
 | `tools/places.yaml` | 이름 붙인 목적지 (지도 좌표) — 지도를 바꾸면 다시 정해야 함 |
 | `tools/explore.py` | 프런티어 자동 탐색 (SLAM+Nav2 실행 중에 지도를 자동 완성) |
 | `tools/nav2_room.yaml` | 좁은 공간용 Nav2 파라미터 (속도 0.1 m/s, 도착 허용 8 cm) |
+| `tools/smoke_response.py` | **연기 감지 → LED 사이렌(빨강/파랑) + 안전지대 이동** 데모 |
+| `tools/camera_server.py` | 로봇 카메라 MJPEG 서버 (로봇에서 실행, `pinky_up.sh --smoke` 가 자동 배포) |
+| `tools/set_map_origin.py` | 지도 원점을 원하는 위치로 이동 (좌표 기준 맞추기) |
+| `smoke/` | 연기 감지 모듈(YOLO). 모델 파일은 저장소에 없음 → `smoke/README.md` |
+| `tests/` | 로직/ROS 연결 테스트 (`python3 -m unittest discover -s tests -v`) |
 | `tools/drive_square.py` | 오도메트리 기반 사각형 주행 (안전 정지 포함) |
 | `maps/` | 저장된 지도 (`room2`, `room3`) |
 | `patches/` | 업스트림에 적용할 패치 (로봇 쪽에 적용해야 함) |
@@ -63,6 +68,22 @@ tools/pinky_up.sh --map maps/room3.yaml [--pose X Y YAW]
 # 4) 종료
 tools/pinky_down.sh [--robot]
 ```
+
+## 연기 감지 → 대피 유도 데모 (병원 화재 시나리오 연출)
+
+```
+로봇 카메라 ─MJPEG→ 노트북 YOLO 연기 감지 → ALARM → LED 빨강/파랑 교대(사이렌) + Nav2로 안전지대 이동 → 도착 시 초록 점등
+```
+```bash
+bash smoke/setup.sh                       # 최초 1회 (.venv 생성). 모델 파일은 smoke/README.md 참고
+tools/pinky_up.sh --map maps/<지도>.yaml --pose X Y YAW --smoke --safe-x 1.2 --safe-y 1.2
+# 가짜 연기(카메라 없이 시험):  ros2 topic pub --once /pinky/smoke std_msgs/msg/String "{data: 'trigger'}"
+# 되돌리기(LED 끔, 대기 상태):  ros2 topic pub --once /pinky/smoke std_msgs/msg/String "{data: 'reset'}"
+```
+- **안전지대 좌표는 지도(map) 기준입니다.** 지도 원점은 SLAM을 시작한 로봇 위치라서, 좌표가 물리적으로 의미 있게 하려면 정해 둔 기준점(예: 시험장 모서리)에 로봇을 두고 지도를 만들거나 `tools/set_map_origin.py` 로 원점을 옮기세요. 시작 시 로그에 *"SAFE ZONE ... OUTSIDE THE MAP"* 이 뜨면 좌표가 지도 밖/장애물입니다.
+- 감지 후 이동이 끝나기 전에는 새 경보를 무시합니다. 연기가 계속 보이는 채로 `reset` 하면 감지기가 CLEAR 될 때까지(5초 무연기) 새 경보가 안 납니다.
+- 테스트(로봇 없이): `python3 -m unittest discover -s tests -v`, `.venv/bin/python tools/smoke_response.py --dry-run --source 0`.
+- 카메라 화면이 뒤집혔으면 로봇의 `camera_server.py --rotate 180`, 색이 이상하면 `--swap-rb`.
 
 ### 새 지도 만들기
 로봇 bringup 실행 후 (SLAM을 먼저, Nav2는 SLAM이 뜬 뒤에 실행해야 안정적):

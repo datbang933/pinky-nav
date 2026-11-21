@@ -14,3 +14,10 @@ maps/raw_still.*
 maps/square_try1.*
 maps/room1_try.*
 maps/room1.*
+
+# smoke detector: venv, model weights (license unknown), runtime output
+.venv/
+smoke/models/
+smoke/snapshots/
+smoke/*.log
+*.log
