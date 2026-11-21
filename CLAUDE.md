@@ -1,0 +1,36 @@
+# CLAUDE.md — pinky-nav 프로젝트 맥락 (Claude Code가 세션 시작 시 자동으로 읽음)
+
+> 변하지 않는 규칙/구조/함정만 여기에. **진행 상황·다음 할 일은 `HANDOFF.md`** 에 있으니 작업 시작 전에 반드시 읽을 것.
+
+## 목표
+실제 Pinky Pro(Raspberry Pi)로 SLAM 지도를 만들고, RViz에서 목적지를 찍거나 Python 이벤트(`tools/pinky_nav.py`)로 지정한 위치로 자율주행한다.
+
+## 아키텍처 (분리 원칙)
+- **로봇(RPi, `pinky@192.168.4.1`)**: 드라이버만 — `bringup_robot.launch.xml` (라이다 `/scan`, `/odom`, `/tf`, 배터리, `/cmd_vel` 구동).
+- **노트북(Ubuntu 24.04 + ROS 2 Jazzy)**: slam_toolbox, Nav2+AMCL, RViz, Python 이벤트 프로그램 — 무거운 계산은 전부 여기서.
+- `ROS_DOMAIN_ID=1` (로봇·노트북 동일). 업스트림: `upstream.repos` (`src/pinky_pro` 로 clone, git에는 안 올림).
+- 로봇 쪽 `bringup.py` 에 `patches/0001-*.patch` (cmd_vel 0.5초 워치독) 적용 필요.
+
+## 자주 쓰는 명령
+`tools/pinky_up.sh [--map ...] [--pose X Y YAW]` 시작 · `tools/pinky_down.sh [--robot]` 종료 · `tools/sync_time.sh` 시계 맞추기(사용자가 직접). 자세한 내용은 `README.md`.
+
+## ⚠ 안전 규칙 (실제 로봇이 움직인다)
+- 로봇이 움직이는 동작(주행, 탐색, 목적지 이동)은 **실행 전에 사용자에게 알리고**, 사용자가 옆에서 지켜볼 수 있는지 확인. 새 위치에서는 먼저 `/scan`으로 주변 여유 거리를 확인.
+- 주행 전 `/battery/voltage` 확인. **7.0 V 미만이면 주행하지 말고 충전 안내** (6.8 V 이하 저전압 경고음).
+- 속도는 낮게(기본 0.1 m/s). 이 환경은 1.5 m 정도의 좁은 방.
+- **외부로 나가는 작업(git push, 공개 게시)은 사용자 확인 후.** 공개 저장소다. 개인 이메일/비밀번호/토큰/키를 커밋하지 말 것.
+- 로봇 `sudo` 비밀번호는 모르고 저장하지 않는다. 필요한 작업은 사용자가 별도 터미널에서 직접 실행하도록 명령을 안내.
+
+## 환경 함정 (겪은 것들)
+- **시계 동기화 필수.** 로봇↔노트북 오차가 수백 ms면 AMCL/Nav2가 `extrapolation into the future`/`Transform data too old`로 실패. `pinky_up.sh` 가 0.15 s 초과 시 중단. 로봇 재부팅하면 다시 틀어짐. 시계 설정은 비밀번호 입력 **후** 시간을 가져와야 정확(`sync_time.sh` 가 그렇게 함).
+- 라이다는 base_link 기준 **yaw 180°** (뒤쪽 장착). 스캔 각도 해석 시 보정할 것. 높이 약 12.5 cm → 벽은 15 cm 이상.
+- **프로세스 종료는 `pkill -x <정확한 이름>`.** `pkill -f`/`pgrep -f` 는 자기 자신의 bash 명령줄에 매칭되어 셸을 죽인다(exit 143/144).
+- Nav2 기동이 가끔 멈춤 → `tools/start_nav2.sh` (재시도). SLAM이 먼저, Nav2는 SLAM 뜬 뒤에. 동시에 띄우면 타임아웃.
+- slam_toolbox `map→odom` 이 느려지면(1 Hz 미만) 목표가 ABORT → SLAM 노드만 재시작.
+- AMCL은 초기 위치 필요. 첫 줄 경고 `Failed to transform initial pose in time` 는 무해.
+- Claude Code의 `!` 명령에는 tty가 없어 **비밀번호 입력이 필요한 명령(ssh -t sudo, git push 토큰)은 사용자의 별도 터미널**에서.
+- 이 PC의 `credential.helper=store` 에 오래된 토큰이 있으면 push가 403. `git -c credential.helper= push` 로 우회.
+
+## 작업 규칙
+- 큰 변화는 `HANDOFF.md` 를 갱신하고 커밋. 지도는 `maps/`, 목적지는 `tools/places.yaml` (지도를 바꾸면 좌표 재설정).
+- 코드/문서 한국어 설명 OK. 커밋 메시지 끝에는 Claude 공동작성 줄 규칙을 따름.
