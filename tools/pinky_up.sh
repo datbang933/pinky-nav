@@ -24,8 +24,8 @@ for i in $(seq 1 30); do timeout 3 ros2 topic echo --once /odom --field header.f
 if [ $SMOKE = 1 ]; then
   echo "[3b] robot camera server + LED server (smoke demo)"
   scp -q $PINKY_TOOLS/camera_server.py $PINKY_HOST:~/camera_server.py
-  ssh $PINKY_HOST 'pgrep -f "[c]amera_server.py" >/dev/null || { setsid nohup python3 ~/camera_server.py > /tmp/camera_server.log 2>&1 < /dev/null & echo $! > /tmp/pinky_camera.pid; }'
-  ssh $PINKY_HOST 'pgrep -f "[l]ed_server" >/dev/null || ROS_STATIC_PEERS=$LAPTOP_IP bash -lc "source /opt/ros/jazzy/setup.bash; source ~/pinky_pro/install/local_setup.bash; export ROS_DOMAIN_ID=1; setsid nohup ros2 run pinky_led led_server > /tmp/led_server.log 2>&1 < /dev/null & echo \$! > /tmp/pinky_led.pid"'
+  ssh $PINKY_HOST 'curl -s -m 2 http://127.0.0.1:5000/stats >/dev/null || { setsid nohup python3 ~/camera_server.py > /tmp/camera_server.log 2>&1 < /dev/null & echo $! > /tmp/pinky_camera.pid; }'
+  ssh $PINKY_HOST '{ [ -f /tmp/pinky_led.pid ] && kill -0 $(cat /tmp/pinky_led.pid) 2>/dev/null; } || ROS_STATIC_PEERS=$LAPTOP_IP bash -lc "source /opt/ros/jazzy/setup.bash; source ~/pinky_pro/install/local_setup.bash; export ROS_DOMAIN_ID=1; setsid nohup ros2 run pinky_led led_server > /tmp/led_server.log 2>&1 < /dev/null & echo \$! > /tmp/pinky_led.pid"'
   sleep 4; curl -s -m 5 http://$PINKY_IP:5000/stats && echo "      camera OK" || echo "      WARNING: camera stream not reachable (see robot:/tmp/camera_server.log)"
 fi
 echo "[4/6] Nav2 + AMCL ($MAP)"; $PINKY_TOOLS/start_nav2.sh $MAP || exit 1

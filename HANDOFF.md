@@ -1,6 +1,6 @@
 # HANDOFF.md — 진행 상황 인계 (작업 끝날 때마다 갱신)
 
-_마지막 갱신: 2026-11-21 (연기 감지 데모 추가)_
+_마지막 갱신: 2026-11-21 (연기 데모 실물 시나리오 통과)_
 
 ## 지금 상태
 - ✅ 실제 로봇 + 노트북 분리 구성 동작 확인 (`/scan` 10 Hz, `/odom` 30 Hz).
@@ -10,7 +10,8 @@ _마지막 갱신: 2026-11-21 (연기 감지 데모 추가)_
 - ✅ 로봇 `bringup.py` cmd_vel 워치독 패치 (`patches/`).
 
 - ✅ **연기 감지 → 사이렌+안전지대 이동 데모 구현** (`tools/smoke_response.py`, `tools/camera_server.py`, `smoke/`). 검증된 것: 모델 로드/클래스(`smoke`,`fire`)/CPU 34 ms, 로직 단위테스트 4개, 가짜 로봇(LED 서비스+Nav2 액션)으로 ROS 연결부 전체 흐름, 노트북 웹캠으로 카메라 서버→OpenCV 수신 10 fps. **미검증(실물 필요):** 로봇에서 카메라 서버(pinkylib 백엔드)·`led_server` 기동, 실제 LED 점등, Nav2로 안전지대 도달, 실제 연기 검출 정확도.
-- ⚠ **안전지대 (x=1.2, y=1.2) 는 현재 지도 `room3` 밖** (갈 수 있는 y 최대 0.83 m). 시험장을 정하고 기준점(원점)을 정해 지도를 새로 만들거나 `tools/set_map_origin.py` 로 원점을 옮겨야 함.
+- ✅ **실물 시나리오 통과**: 지도 `maps/arena` (가벽 시험장, 원점=로봇 시작 위치, x=앞, y=왼쪽, 약 1.9×1.9 m). 안전지대 (1.2, 1.2) 는 빈 칸, 도착 오차 7 cm. 가짜 연기(`trigger`) → LED 빨강/파랑 교대(31 s 동안 39+39회) → 안전지대 → 초록, `reset` 으로 해제. 로봇 카메라(pinkylib) 10 fps 스트림 OK, 감지기 연결 OK. **미검증: 실제 연기에 대한 YOLO 정확도**, 사람이 LED를 눈으로 본 확인(서버 로그로만 확인).
+- ~~안전지대 (x=1.2, y=1.2) 는 현재 지도 `room3` 밖~~ → `arena` 지도로 해결. (이전 메모: (갈 수 있는 y 최대 0.83 m). 시험장을 정하고 기준점(원점)을 정해 지도를 새로 만들거나 `tools/set_map_origin.py` 로 원점을 옮겨야 했음.)
 
 ## 마지막 시점의 로봇 상태
 - 배터리 **6.88 V (저전압 경고 직전)** → 충전 필요. 충전 후 `pinky_up.sh` 로 재검증.
@@ -26,6 +27,10 @@ _마지막 갱신: 2026-11-21 (연기 감지 데모 추가)_
 6. 팀원 협업자 추가 / main 브랜치 보호 (GitHub 설정).
 
 ## 알려진 이슈
+- **공유 Wi-Fi(fastcampus)에서는 TF 지연이 1.7 s까지 튀어 Nav2가 안 뜸** → 반드시 로봇 자체 AP(`pinky_eed0`, 192.168.4.1)로 연결. 부팅 직후 hostapd 가 start-limit 으로 죽는 경우가 있음 → 로봇에서 `sudo systemctl reset-failed hostapd && sudo systemctl restart hostapd`. (공유망용 `tools/robot_ip.txt`, `ROS_STATIC_PEERS` 지원은 넣어 둠)
+- 로봇 카메라 화면이 청록빛(색 보정). 감지 정확도에 영향 가능 → 실제 연기로 확인 후 필요하면 보정.
+- `pgrep -f`/`pkill -f` 는 자기 명령줄에 걸린다(원격 ssh 명령 포함). 시작 확인은 포트/PID 파일로.
+- 로봇 `joint_state_publisher` 는 SIGTERM/SIGINT 를 무시 → `kill -9`.
 - slam_toolbox `map→odom` 갱신이 가끔 느려져 Nav2 목표가 ABORT (SLAM 재시작으로 복구, 근본 원인 미확인).
 - Nav2 기동이 가끔 멈춤 (`start_nav2.sh` 가 재시도).
 - 이벤트가 연속으로 오면 새 목표가 이전 목표를 덮어씀.
