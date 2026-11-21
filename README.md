@@ -82,6 +82,7 @@ tools/pinky_up.sh --map maps/<지도>.yaml --pose X Y YAW --smoke --safe-x 1.2 -
 ```
 - **안전지대 좌표는 지도(map) 기준입니다.** 지도 원점은 SLAM을 시작한 로봇 위치라서, 좌표가 물리적으로 의미 있게 하려면 정해 둔 기준점(예: 시험장 모서리)에 로봇을 두고 지도를 만들거나 `tools/set_map_origin.py` 로 원점을 옮기세요. 시작 시 로그에 *"SAFE ZONE ... OUTSIDE THE MAP"* 이 뜨면 좌표가 지도 밖/장애물입니다.
 - 감지 후 이동이 끝나기 전에는 새 경보를 무시합니다. 연기가 계속 보이는 채로 `reset` 하면 감지기가 CLEAR 될 때까지(5초 무연기) 새 경보가 안 납니다.
+- **감도 조정:** 기본값은 `--conf 0.3 --min-hits 3`(실제 연기 발생기로 조정). 먼저 `.venv/bin/python tools/smoke_monitor.py --seconds 120`(로봇 안 움직임)으로 신뢰도를 보고 정하세요.
 - 테스트(로봇 없이): `python3 -m unittest discover -s tests -v`, `.venv/bin/python tools/smoke_response.py --dry-run --source 0`.
 - 카메라 화면이 뒤집혔으면 로봇의 `camera_server.py --rotate 180`, 색이 이상하면 `--swap-rb`.
 
