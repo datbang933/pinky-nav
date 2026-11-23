@@ -36,13 +36,17 @@ class PinkyNav(Node):
         self._spin_thread.start()
         if not self._ac.wait_for_server(15): raise RuntimeError('Nav2 navigate_to_pose not available')
 
-    def pose(self):
-        """current (x, y, yaw) in map frame, or None"""
-        try:
-            t = self._tf.lookup_transform('map', 'base_footprint', rclpy.time.Time()); q = t.transform.rotation
-            return (t.transform.translation.x, t.transform.translation.y,
-                    math.atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z)))
-        except Exception: return None
+    def pose(self, timeout=3.0):
+        """current (x, y, yaw) in map frame; waits up to `timeout` s for the TF buffer to fill, None if unavailable"""
+        t0 = time.time()
+        while True:
+            try:
+                t = self._tf.lookup_transform('map', 'base_footprint', rclpy.time.Time()); q = t.transform.rotation
+                return (t.transform.translation.x, t.transform.translation.y,
+                        math.atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z)))
+            except Exception:
+                if time.time() - t0 >= timeout: return None
+                time.sleep(0.1)
 
     def goto(self, x, y, yaw=0.0, wait=True, timeout=120.0):
         """returns True on arrival (wait=True), or True if the goal was accepted (wait=False)"""
