@@ -218,8 +218,9 @@ def main():
     ap.add_argument('--min-hits', type=int, default=3, help='alarm when >= N of the last --window frames show smoke')
     ap.add_argument('--window', type=int, default=10)
     ap.add_argument('--device', default='cpu', help='cpu or 0 (GPU)')
-    ap.add_argument('--safe-x', type=float, default=1.2, help='safe zone x in map frame [m]')
-    ap.add_argument('--safe-y', type=float, default=1.2, help='safe zone y in map frame [m]')
+    ap.add_argument('--safe-place', default='safe_A', help='named place from the scenario places file (tools/places/<scenario>.yaml)')
+    ap.add_argument('--safe-x', type=float, default=None, help='override: safe zone x in map frame [m]')
+    ap.add_argument('--safe-y', type=float, default=None, help='override: safe zone y in map frame [m]')
     ap.add_argument('--safe-yaw', type=float, default=0.0)
     ap.add_argument('--siren-period', type=float, default=0.4, help='seconds per colour')
     ap.add_argument('--snapshots', default=os.path.join(ROOT, 'smoke', 'snapshots'))
@@ -229,7 +230,16 @@ def main():
     a = ap.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
-    safe = (a.safe_x, a.safe_y, a.safe_yaw)
+    if a.safe_x is not None and a.safe_y is not None:
+        safe = (a.safe_x, a.safe_y, a.safe_yaw)
+    else:
+        import yaml
+        pf = os.environ.get('PINKY_PLACES') or os.path.join(HERE, 'places', os.environ.get('PINKY_SCENARIO', 'act2') + '.yaml')
+        places = yaml.safe_load(open(pf))
+        if a.safe_place not in places:
+            sys.exit('safe place %r not in %s (known: %s)' % (a.safe_place, pf, list(places)))
+        pp = places[a.safe_place]; safe = (pp['x'], pp['y'], pp.get('yaw', 0.0))
+        log.info('safe zone = %s %s from %s', a.safe_place, safe[:2], os.path.basename(pf))
 
     node = None
     if a.dry_run:
@@ -239,7 +249,7 @@ def main():
         nav = PinkyNav()
         node = nav
         evac = Evacuator(nav, RosLed(nav), safe, period=a.siren_period)
-        check_safe_zone(nav, a.safe_x, a.safe_y)
+        check_safe_zone(nav, safe[0], safe[1])
         from std_msgs.msg import String
 
         def cmd(m):

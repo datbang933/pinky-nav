@@ -1,9 +1,9 @@
 #!/bin/bash
-# usage: pinky_up.sh [--map /path/map.yaml] [--pose X Y YAW] [--no-rviz] [--smoke [--safe-x X --safe-y Y]]
+# usage: pinky_up.sh [--map /path/map.yaml] [--pose X Y YAW] [--no-rviz] [--smoke [--safe-place safe_A|safe_B]]
 # Starts: robot bringup (RPi) -> Nav2+AMCL (laptop) -> initial pose -> RViz -> event listener
 source "$(dirname "$(readlink -f "$0")")/pinky_env.sh"
-MAP=$PINKY_ROOT/maps/room3.yaml; POSE=""; RVIZ=1; SMOKE=0; SAFE_X=1.2; SAFE_Y=1.2
-while [ $# -gt 0 ]; do case $1 in --map) MAP=$2; shift 2;; --pose) POSE="$2 $3 $4"; shift 4;; --no-rviz) RVIZ=0; shift;; --smoke) SMOKE=1; shift;; --safe-x) SAFE_X=$2; shift 2;; --safe-y) SAFE_Y=$2; shift 2;; *) echo "unknown arg $1"; exit 1;; esac; done
+MAP=$PINKY_ROOT/maps/arena3.yaml; POSE=""; RVIZ=1; SMOKE=0; SAFE_PLACE=safe_A
+while [ $# -gt 0 ]; do case $1 in --map) MAP=$2; shift 2;; --pose) POSE="$2 $3 $4"; shift 4;; --no-rviz) RVIZ=0; shift;; --smoke) SMOKE=1; shift;; --safe-place) SAFE_PLACE=$2; shift 2;; *) echo "unknown arg $1"; exit 1;; esac; done
 [ -z "$POSE" ] && [ -f $PINKY_TOOLS/last_pose.txt ] && POSE=$(cat $PINKY_TOOLS/last_pose.txt); [ -z "$POSE" ] && POSE="0 0 0"
 [ -f "$MAP" ] || { echo "map not found: $MAP"; exit 1; }
 
@@ -37,7 +37,7 @@ if [ $SMOKE = 1 ]; then
   [ -x $PINKY_ROOT/.venv/bin/python ] || { echo "smoke env missing: run smoke/setup.sh"; exit 1; }
   [ -f $PINKY_ROOT/smoke/models/rabahdev/best.pt ] || { echo "model missing: see smoke/README.md"; exit 1; }
   [ -f /tmp/pinky_smoke.pid ] && kill $(cat /tmp/pinky_smoke.pid) 2>/dev/null
-  setsid nohup $PINKY_ROOT/.venv/bin/python $PINKY_TOOLS/smoke_response.py --safe-x $SAFE_X --safe-y $SAFE_Y > /tmp/smoke_response.log 2>&1 < /dev/null & echo $! > /tmp/pinky_smoke.pid
-  sleep 5; echo "SMOKE DEMO running (safe zone $SAFE_X,$SAFE_Y). log: /tmp/smoke_response.log   fake smoke: ros2 topic pub --once /pinky/smoke std_msgs/msg/String \"{data: 'trigger'}\"   reset: 'reset'"
+  setsid nohup $PINKY_ROOT/.venv/bin/python $PINKY_TOOLS/smoke_response.py --safe-place $SAFE_PLACE > /tmp/smoke_response.log 2>&1 < /dev/null & echo $! > /tmp/pinky_smoke.pid
+  sleep 5; echo "SMOKE DEMO running (safe zone $SAFE_PLACE). log: /tmp/smoke_response.log   fake smoke: ros2 topic pub --once /pinky/smoke std_msgs/msg/String \"{data: 'trigger'}\"   reset: 'reset'"
   grep -E "ERROR|WARN|safe zone|classes" /tmp/smoke_response.log | cut -c1-200
 fi

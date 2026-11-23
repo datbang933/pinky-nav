@@ -21,7 +21,8 @@ from action_msgs.msg import GoalStatus
 from std_msgs.msg import String
 from tf2_ros import Buffer, TransformListener
 
-PLACES = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'places.yaml')
+# named places per scenario: tools/places/<scenario>.yaml  (env PINKY_SCENARIO, default act2; or PINKY_PLACES=<file>)
+PLACES = os.environ.get('PINKY_PLACES') or os.path.join(os.path.dirname(os.path.abspath(__file__)), 'places', os.environ.get('PINKY_SCENARIO', 'act2') + '.yaml')
 
 class PinkyNav(Node):
     def __init__(self, places_file=PLACES):

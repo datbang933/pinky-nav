@@ -17,7 +17,9 @@ Pinky Pro(Raspberry Pi)는 **센서/모터 드라이버만** 실행하고, SLAM�
 | `tools/pinky_up.sh` / `pinky_down.sh` | 전체 시작 / 종료 (로봇 bringup → Nav2+AMCL → 초기 위치 → RViz → 이벤트 리스너) |
 | `tools/sync_time.sh` | 로봇 시계를 노트북 기준으로 맞춤 (**직접 실행, 로봇 sudo 비밀번호 필요**) |
 | `tools/pinky_nav.py` | Python API (`goto`, `goto_place`, `cancel`) + `/pinky/event` 리스너 |
-| `tools/places.yaml` | 이름 붙인 목적지 (지도 좌표) — 지도를 바꾸면 다시 정해야 함 |
+| `tools/places/act2.yaml` | 2막(병실) 이름 붙인 목적지 (시험장 좌표). 시나리오별 파일 `PINKY_SCENARIO=act1` 등 |
+| `tools/scan_rooms.py` | 모든 방에 들어가 제자리 360° 스캔 (SLAM 중 지도 빈틈 메우기) |
+| `tools/start_slam.sh` | slam_toolbox 시작 + `map→odom` 확인/재시도 |
 | `tools/explore.py` | 프런티어 자동 탐색 (SLAM+Nav2 실행 중에 지도를 자동 완성) |
 | `tools/nav2_room.yaml` | 좁은 공간용 Nav2 파라미터 (속도 0.1 m/s, 도착 허용 8 cm) |
 | `tools/smoke_response.py` | **연기 감지 → LED 사이렌(빨강/파랑) + 안전지대 이동** 데모 |
@@ -26,7 +28,7 @@ Pinky Pro(Raspberry Pi)는 **센서/모터 드라이버만** 실행하고, SLAM�
 | `smoke/` | 연기 감지 모듈(YOLO). 모델 파일은 저장소에 없음 → `smoke/README.md` |
 | `tests/` | 로직/ROS 연결 테스트 (`python3 -m unittest discover -s tests -v`) |
 | `tools/drive_square.py` | 오도메트리 기반 사각형 주행 (안전 정지 포함) |
-| `maps/` | 저장된 지도 (`room2`, `room3`) |
+| `maps/` | 저장된 지도. **현재 기준 `arena3`** (시험장 모서리 (0,0), 로봇 시작 (0.298, 0.195) 앞 +x) |
 | `patches/` | 업스트림에 적용할 패치 (로봇 쪽에 적용해야 함) |
 | `upstream.repos` | 업스트림 저장소 정보 |
 
@@ -58,7 +60,7 @@ cd ~/pinky_pro && colcon build --packages-select pinky_bringup
 tools/sync_time.sh
 
 # 2) 시작 — 마지막 위치를 초기 위치로 사용. 로봇을 손으로 옮겼다면 --pose 지정
-tools/pinky_up.sh --map maps/room3.yaml [--pose X Y YAW]
+tools/pinky_up.sh [--map maps/arena3.yaml] [--pose X Y YAW]   # 좌표는 시험장 모서리 기준
 
 # 3) 목적지 지정
 #    - RViz: "2D Goal Pose" 로 클릭+드래그 (위치가 틀어지면 "2D Pose Estimate")

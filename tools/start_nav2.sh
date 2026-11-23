@@ -1,7 +1,7 @@
 #!/bin/bash
 # usage: start_nav2.sh <map.yaml> ; starts Nav2+AMCL on the laptop, retries if startup hangs
 TOOLS="$(dirname "$(readlink -f "$0")")"; ROOT="$(dirname "$TOOLS")"
-MAP=${1:-$ROOT/maps/room3.yaml}
+MAP=${1:-$ROOT/maps/arena3.yaml}
 source /opt/ros/jazzy/setup.bash; source $ROOT/install/setup.bash; export ROS_DOMAIN_ID=1
 for try in 1 2 3; do
   pkill -x ros2; for c in sync_slam_toolb lifecycle_manag controller_serv planner_server behavior_serve bt_navigator waypoint_foll velocity_smoot smoother_server component_conta amcl map_server; do pkill -x $c; done
