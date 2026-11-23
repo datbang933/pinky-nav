@@ -28,7 +28,9 @@ class PinkyNav(Node):
     def __init__(self, places_file=PLACES):
         if not rclpy.ok(): rclpy.init()
         super().__init__('pinky_nav_api')
-        self.places = yaml.safe_load(open(places_file)) if os.path.exists(places_file) else {}
+        data = (yaml.safe_load(open(places_file)) if os.path.exists(places_file) else None) or {}
+        self.places = {k: v for k, v in data.items() if isinstance(v, dict) and 'x' in v}     # named places
+        self.evac = data.get('evac', {})                                                       # home ward -> safe zone
         self._ac = ActionClient(self, NavigateToPose, 'navigate_to_pose')
         self._tf = Buffer(); TransformListener(self._tf, self)
         self._goal = None
@@ -66,8 +68,14 @@ class PinkyNav(Node):
         return res.result().status == GoalStatus.STATUS_SUCCEEDED
 
     def goto_place(self, name, **kw):
+        """go to a named place; if the place has `via: [[x, y, yaw], ...]` those waypoints are visited first
+        (use them to line the robot up in front of a narrow doorway)."""
         if name not in self.places: raise KeyError(f'unknown place {name!r}; known: {list(self.places)}')
-        p = self.places[name]; return self.goto(p['x'], p['y'], p.get('yaw', 0.0), **kw)
+        p = self.places[name]
+        for v in p.get('via', []):
+            if not self.goto(v[0], v[1], v[2] if len(v) > 2 else 0.0, **kw):
+                self.get_logger().warn(f'via point {v} of {name} not reached'); return False
+        return self.goto(p['x'], p['y'], p.get('yaw', 0.0), **kw)
 
     def cancel(self):
         if self._goal: self._goal.cancel_goal_async()

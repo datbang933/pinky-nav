@@ -1,12 +1,14 @@
 #!/bin/bash
-# usage: pinky_up.sh [--map /path/map.yaml] [--pose X Y YAW] [--no-rviz] [--smoke [--safe-place safe_A|safe_B]]
+# usage: pinky_up.sh [--map /path/map.yaml] [--pose X Y YAW] [--no-rviz] [--smoke [--home ward_A|ward_B | --safe-place safe_A|safe_B]]
 # Starts: robot bringup (RPi) -> Nav2+AMCL (laptop) -> initial pose -> RViz -> event listener
 source "$(dirname "$(readlink -f "$0")")/pinky_env.sh"
-MAP=$PINKY_ROOT/maps/arena3.yaml; POSE=""; RVIZ=1; SMOKE=0; SAFE_PLACE=safe_A
-while [ $# -gt 0 ]; do case $1 in --map) MAP=$2; shift 2;; --pose) POSE="$2 $3 $4"; shift 4;; --no-rviz) RVIZ=0; shift;; --smoke) SMOKE=1; shift;; --safe-place) SAFE_PLACE=$2; shift 2;; *) echo "unknown arg $1"; exit 1;; esac; done
+MAP=$PINKY_ROOT/maps/arena3.yaml; POSE=""; RVIZ=1; SMOKE=0; SAFE_PLACE=safe_A; HOME_WARD=
+while [ $# -gt 0 ]; do case $1 in --map) MAP=$2; shift 2;; --pose) POSE="$2 $3 $4"; shift 4;; --no-rviz) RVIZ=0; shift;; --smoke) SMOKE=1; shift;; --safe-place) SAFE_PLACE=$2; shift 2;; --home) HOME_WARD=$2; shift 2;; *) echo "unknown arg $1"; exit 1;; esac; done
 [ -z "$POSE" ] && [ -f $PINKY_TOOLS/last_pose.txt ] && POSE=$(cat $PINKY_TOOLS/last_pose.txt); [ -z "$POSE" ] && POSE="0 0 0"
 [ -f "$MAP" ] || { echo "map not found: $MAP"; exit 1; }
 
+# the ROS CLI daemon keeps stale network info after Wi-Fi changes -> restart it
+ros2 daemon stop >/dev/null 2>&1; ros2 daemon start >/dev/null 2>&1
 echo "[1/6] robot reachable?"; ssh -o BatchMode=yes -o ConnectTimeout=5 $PINKY_HOST true || { echo "cannot ssh to $PINKY_HOST"; exit 1; }
 
 echo "[2/6] clock offset"
@@ -37,7 +39,7 @@ if [ $SMOKE = 1 ]; then
   [ -x $PINKY_ROOT/.venv/bin/python ] || { echo "smoke env missing: run smoke/setup.sh"; exit 1; }
   [ -f $PINKY_ROOT/smoke/models/rabahdev/best.pt ] || { echo "model missing: see smoke/README.md"; exit 1; }
   [ -f /tmp/pinky_smoke.pid ] && kill $(cat /tmp/pinky_smoke.pid) 2>/dev/null
-  setsid nohup $PINKY_ROOT/.venv/bin/python $PINKY_TOOLS/smoke_response.py --safe-place $SAFE_PLACE > /tmp/smoke_response.log 2>&1 < /dev/null & echo $! > /tmp/pinky_smoke.pid
-  sleep 5; echo "SMOKE DEMO running (safe zone $SAFE_PLACE). log: /tmp/smoke_response.log   fake smoke: ros2 topic pub --once /pinky/smoke std_msgs/msg/String \"{data: 'trigger'}\"   reset: 'reset'"
+  setsid nohup $PINKY_ROOT/.venv/bin/python $PINKY_TOOLS/smoke_response.py $([ -n "$HOME_WARD" ] && echo --home $HOME_WARD || echo --safe-place $SAFE_PLACE) > /tmp/smoke_response.log 2>&1 < /dev/null & echo $! > /tmp/pinky_smoke.pid
+  sleep 5; echo "SMOKE DEMO running (home=${HOME_WARD:-none} safe=$SAFE_PLACE). log: /tmp/smoke_response.log   fake smoke: ros2 topic pub --once /pinky/smoke std_msgs/msg/String \"{data: 'trigger'}\"   reset: 'reset'"
   grep -E "ERROR|WARN|safe zone|classes" /tmp/smoke_response.log | cut -c1-200
 fi

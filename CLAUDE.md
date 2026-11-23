@@ -30,9 +30,12 @@
 ## 시험장 지도 `maps/arena3` (현재 기준)
 - 시험장 **모서리가 (0,0)**, x=1805 mm 쪽, y=1820 mm 쪽. 로봇 시작 위치 **(0.298, 0.195) 앞이 +x**. 모든 로봇이 같은 좌표를 쓴다(로봇 3대가 이 지도를 공유; 각자 위치만 초기 위치로 알려 주면 됨).
 - SLAM으로 지도를 만들 때 SLAM 좌표 원점은 로봇 시작점 → 저장 후 `tools/set_map_origin.py maps/X.yaml -0.298 -0.195` 로 모서리 기준으로 옮긴다. (SLAM이 켜져 있는 동안의 `scan_rooms.py`/`explore.py` 좌표는 SLAM 좌표.)
-- 시나리오: 2막(병실) = `tools/places/act2.yaml` (병실A=출발 방, 안전지대A=가운데 홀, 병실B=왼쪽 위 방, 안전지대B=오른쪽 아래 방). 1막은 같은 지도에 이름만 다른 `places/act1.yaml` 을 추가.
+- 시나리오: 2막(병실) = `tools/places/act2.yaml`. **RViz 화면은 x 위/y 왼쪽**(원점 오른쪽 아래). 병실A=원점 방(x작·y작), 안전지대A=+y 방(x작·y큼), 병실B=x큼·y큼, 안전지대B=x큼·y작(입구 ~0.35 m, `via` 필요), 중앙 복도. 기본 대피 규칙 `evac: ward_A→safe_B, ward_B→safe_A`, 2막은 **로봇 2대**(병실A/병실B에 각 1대): `smoke_response.py --home ward_A|ward_B`. 1막은 같은 지도에 이름만 다른 `places/act1.yaml`.
+- 안전지대는 상황(장애물·연기 많음)에 따라 바꾸는 기능이 **앞으로 구현할 일**(HANDOFF 체크리스트). 두 로봇 경로가 복도에서 교차하므로 충돌 방지도 필요.
 
 ## 환경 함정 (겪은 것들)
+- **위치추정이 8~10 cm 어긋나면 좁은 입구(폭 ~0.35 m)에서 `collision ahead`** — 로봇이 중앙이 아니라 벽 쪽에 붙기 때문. `tools/scan_match_pose.py [--guess X Y YAW] --set` 으로 라이다를 지도에 맞춰 정확한 위치를 구해 초기 위치로 넣고, 위치를 전혀 모르면 `tools/localize_global.py`. AMCL 은 `tools/nav2_room.yaml` 에서 시험장용으로 조였음(sigma_hit 0.08, z_hit 0.8, 빔 180, 업데이트 5 cm).
+- Wi-Fi 를 바꾸면(AP 재시작 등) 노트북에서 로봇 토픽이 안 보일 수 있음 → `ros2 daemon stop; ros2 daemon start` (`pinky_up.sh` 가 수행). 로봇 쪽은 bringup 재시작.
 - **로봇이 공유기(`fastcampus`)에 붙은 채 AP를 열면 한 칩이 시간을 나눠 써서 지연이 100~500 ms 로 튀고 AP 채널이 5 GHz DFS(108)로 밀린다** → TF/`map→odom` 이 1~3 s 늦어 Nav2 가 `Transform data too old`/`Failed to make progress`. 로봇에서 `sudo nmcli device disconnect wlan0; sudo nmcli connection modify fastcampus_13F connection.autoconnect no` 로 AP 전용으로. 주행 전 `ping -c30 -i0.2 192.168.4.1` 평균 < 20 ms, 최대 < 100 ms 인지 확인.
 - 좁은 곳(벽 10 cm 이내)에 로봇이 끼면 컨트롤러가 `collision ahead` 로 거부(제자리 회전도 불가). 탐색 목표는 벽에서 17 cm 이상(`explore.py --clear 0.17`). 끼었으면 벽에서 멀어지는 방향으로 0.05 m/s 로 짧게 직진해서 뺀다.
 - slam_toolbox lifecycle 활성화가 가끔 멈춤 → `tools/start_slam.sh` (map→odom 속도 확인 후 재시도). SLAM 을 재시작하면 지도와 원점이 사라진다.

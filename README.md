@@ -18,6 +18,7 @@ Pinky Pro(Raspberry Pi)는 **센서/모터 드라이버만** 실행하고, SLAM�
 | `tools/sync_time.sh` | 로봇 시계를 노트북 기준으로 맞춤 (**직접 실행, 로봇 sudo 비밀번호 필요**) |
 | `tools/pinky_nav.py` | Python API (`goto`, `goto_place`, `cancel`) + `/pinky/event` 리스너 |
 | `tools/places/act2.yaml` | 2막(병실) 이름 붙인 목적지 (시험장 좌표). 시나리오별 파일 `PINKY_SCENARIO=act1` 등 |
+| `tools/scan_match_pose.py` / `localize_global.py` | 라이다를 지도에 맞춰 cm 정밀 위치 보정 / 위치를 모를 때 전역 위치추정 |
 | `tools/scan_rooms.py` | 모든 방에 들어가 제자리 360° 스캔 (SLAM 중 지도 빈틈 메우기) |
 | `tools/start_slam.sh` | slam_toolbox 시작 + `map→odom` 확인/재시도 |
 | `tools/explore.py` | 프런티어 자동 탐색 (SLAM+Nav2 실행 중에 지도를 자동 완성) |
@@ -78,11 +79,12 @@ tools/pinky_down.sh [--robot]
 ```
 ```bash
 bash smoke/setup.sh                       # 최초 1회 (.venv 생성). 모델 파일은 smoke/README.md 참고
-tools/pinky_up.sh --map maps/<지도>.yaml --pose X Y YAW --smoke --safe-x 1.2 --safe-y 1.2
+tools/pinky_up.sh --map maps/arena3.yaml --pose X Y YAW --smoke --home ward_A     # 병실A 로봇 → 안전지대B (ward_B 이면 안전지대A)
 # 가짜 연기(카메라 없이 시험):  ros2 topic pub --once /pinky/smoke std_msgs/msg/String "{data: 'trigger'}"
 # 되돌리기(LED 끔, 대기 상태):  ros2 topic pub --once /pinky/smoke std_msgs/msg/String "{data: 'reset'}"
 ```
-- **안전지대 좌표는 지도(map) 기준입니다.** 지도 원점은 SLAM을 시작한 로봇 위치라서, 좌표가 물리적으로 의미 있게 하려면 정해 둔 기준점(예: 시험장 모서리)에 로봇을 두고 지도를 만들거나 `tools/set_map_origin.py` 로 원점을 옮기세요. 시작 시 로그에 *"SAFE ZONE ... OUTSIDE THE MAP"* 이 뜨면 좌표가 지도 밖/장애물입니다.
+- **병실→안전지대 규칙**은 `tools/places/act2.yaml` 의 `evac:` (병실A→안전지대B, 병실B→안전지대A). 로봇 2대를 병실A/병실B 에 각각 두고 `--home` 으로 지정합니다. 안전지대 이름은 `--safe-place`.
+- **좌표는 지도(map) 기준입니다.** 지도 원점은 SLAM을 시작한 로봇 위치라서, 좌표가 물리적으로 의미 있게 하려면 정해 둔 기준점(예: 시험장 모서리)에 로봇을 두고 지도를 만들거나 `tools/set_map_origin.py` 로 원점을 옮기세요. 시작 시 로그에 *"SAFE ZONE ... OUTSIDE THE MAP"* 이 뜨면 좌표가 지도 밖/장애물입니다.
 - 감지 후 이동이 끝나기 전에는 새 경보를 무시합니다. 연기가 계속 보이는 채로 `reset` 하면 감지기가 CLEAR 될 때까지(5초 무연기) 새 경보가 안 납니다.
 - **감도 조정:** 기본값은 `--conf 0.3 --min-hits 3`(실제 연기 발생기로 조정). 먼저 `.venv/bin/python tools/smoke_monitor.py --seconds 120`(로봇 안 움직임)으로 신뢰도를 보고 정하세요.
 - 테스트(로봇 없이): `python3 -m unittest discover -s tests -v`, `.venv/bin/python tools/smoke_response.py --dry-run --source 0`.

@@ -66,8 +66,8 @@ class Evacuator:
     reset() returns to IDLE.  `nav.goto(x, y, yaw)` must block and return True on arrival."""
     IDLE, EVACUATING, ARRIVED, FAILED = 'IDLE', 'EVACUATING', 'ARRIVED', 'FAILED'
 
-    def __init__(self, nav, led, safe=(1.2, 1.2, 0.0), retries=2, period=0.4):
-        self.nav, self.led, self.safe, self.retries = nav, led, safe, retries
+    def __init__(self, nav, led, safe=(1.2, 1.2, 0.0), retries=2, period=0.4, place=None):
+        self.nav, self.led, self.safe, self.retries, self.place = nav, led, safe, retries, place
         self.siren = Siren(led, period)
         self.state = self.IDLE
         self._lock = threading.Lock()
@@ -89,7 +89,7 @@ class Evacuator:
         ok = False
         for attempt in range(1, self.retries + 2):
             try:
-                ok = self.nav.goto(*self.safe)
+                ok = self.nav.goto_place(self.place) if (self.place and hasattr(self.nav, 'goto_place')) else self.nav.goto(*self.safe)
             except Exception:
                 log.exception('goto failed')
                 ok = False
@@ -218,6 +218,7 @@ def main():
     ap.add_argument('--min-hits', type=int, default=3, help='alarm when >= N of the last --window frames show smoke')
     ap.add_argument('--window', type=int, default=10)
     ap.add_argument('--device', default='cpu', help='cpu or 0 (GPU)')
+    ap.add_argument('--home', default=None, help='the ward this robot is stationed in (ward_A|ward_B): the safe zone is taken from the scenario `evac` rule')
     ap.add_argument('--safe-place', default='safe_A', help='named place from the scenario places file (tools/places/<scenario>.yaml)')
     ap.add_argument('--safe-x', type=float, default=None, help='override: safe zone x in map frame [m]')
     ap.add_argument('--safe-y', type=float, default=None, help='override: safe zone y in map frame [m]')
@@ -235,11 +236,16 @@ def main():
     else:
         import yaml
         pf = os.environ.get('PINKY_PLACES') or os.path.join(HERE, 'places', os.environ.get('PINKY_SCENARIO', 'act2') + '.yaml')
-        places = yaml.safe_load(open(pf))
-        if a.safe_place not in places:
-            sys.exit('safe place %r not in %s (known: %s)' % (a.safe_place, pf, list(places)))
-        pp = places[a.safe_place]; safe = (pp['x'], pp['y'], pp.get('yaw', 0.0))
-        log.info('safe zone = %s %s from %s', a.safe_place, safe[:2], os.path.basename(pf))
+        data = yaml.safe_load(open(pf)); evac = data.get('evac', {})
+        place_name = a.safe_place
+        if a.home:
+            if a.home not in evac:
+                sys.exit('--home %r has no evac rule in %s (rules: %s)' % (a.home, pf, evac))
+            place_name = evac[a.home]
+        if place_name not in data:
+            sys.exit('safe place %r not in %s (known: %s)' % (place_name, pf, [k for k, v in data.items() if isinstance(v, dict)]))
+        pp = data[place_name]; safe = (pp['x'], pp['y'], pp.get('yaw', 0.0))
+        log.info('safe zone = %s %s (home=%s) from %s', place_name, safe[:2], a.home, os.path.basename(pf))
 
     node = None
     if a.dry_run:
@@ -248,7 +254,7 @@ def main():
         from pinky_nav import PinkyNav
         nav = PinkyNav()
         node = nav
-        evac = Evacuator(nav, RosLed(nav), safe, period=a.siren_period)
+        evac = Evacuator(nav, RosLed(nav), safe, period=a.siren_period, place=place_name)
         check_safe_zone(nav, safe[0], safe[1])
         from std_msgs.msg import String
 

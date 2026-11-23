@@ -1,7 +1,10 @@
-# Act 2 (병실/hospital-ward scenario). Coordinates are in ARENA coordinates (origin = arena corner,
-# x along the 1805 mm side, y along the 1820 mm side) = frame of maps/arena3. Each point is the spot with
-# the most wall clearance inside the room (25-35 cm). Act 1 uses the same map with other names: add tools/places/act1.yaml.
-ward_A:  {x: 0.34, y: 0.34, yaw: 0.0}   # 병실A  - start room (lower-left); robot start pose is (0.298, 0.195) facing +x
-safe_A:  {x: 0.64, y: 0.89, yaw: 0.0}   # 안전지대A - middle hall, first place the robot went (+y from the origin)
-ward_B:  {x: 0.54, y: 1.49, yaw: 0.0}   # 병실B  - upper-left room (second room visited)
-safe_B:  {x: 1.19, y: 0.29, yaw: 0.0}   # 안전지대B - lower-right room, straight ahead (+x) from the origin
+# Act 2 (hospital-ward scenario).  ARENA coordinates (origin = arena corner, x along the 1805 mm side, y along the 1820 mm side),
+# the frame of maps/arena3.  Seen in RViz (x up, y left): origin = bottom-right, +y = left, +x = up.
+# Each point = most open spot of the room (wall clearance in the comment).  Act 1 reuses the map with other names (places/act1.yaml).
+ward_A:   {x: 0.34, y: 0.34, yaw: 0.0}   # 병실A    - origin room        (x small, y small)  RViz: bottom-right
+safe_A:   {x: 0.54, y: 1.49, yaw: 0.0}   # 안전지대A - +y of ward A       (x small, y LARGE)  RViz: bottom-left
+ward_B:   {x: 1.49, y: 1.49, yaw: 0.0}   # 병실B    - +x of safe A       (x LARGE, y LARGE)  RViz: top-left
+safe_B:   {x: 1.19, y: 0.29, yaw: 0.0, via: [[1.14, 0.85, -1.5708]]}   # 안전지대B - -y of ward B       (x LARGE, y small)  RViz: top-right; doorway ~0.35 m wide at x=1.14 -> `via` lines the robot up first
+corridor: {x: 0.64, y: 0.89, yaw: 0.0}   # 복도      - central hall connecting all four rooms
+# Act 2 uses TWO robots, one stationed in each ward (start pose = its ward point). On smoke the robot evacuates to the paired safe zone:
+evac: {ward_A: safe_B, ward_B: safe_A}

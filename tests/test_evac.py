@@ -53,5 +53,18 @@ class EvacTest(unittest.TestCase):
         ev.reset()
 
 
+class PlaceNav(FakeNav):
+    def __init__(self): super().__init__(ok=True, delay=0.1); self.places_called = []
+    def goto_place(self, name): self.places_called.append(name); time.sleep(0.1); return True
+
+
+class PlaceTest(unittest.TestCase):
+    def test_goes_by_place_name(self):
+        nav = PlaceNav(); led = FakeLed(quiet=True)
+        ev = Evacuator(nav, led, safe=(1.19, 0.29, 0.0), period=0.05, place='safe_B')
+        ev.alarm(); self.assertTrue(wait(lambda: ev.state == ev.ARRIVED))
+        self.assertEqual(nav.places_called, ['safe_B'], 'must use goto_place so `via` waypoints are honoured')
+
+
 if __name__ == '__main__':
     unittest.main()
